@@ -21,6 +21,7 @@
         android:orientation="vertical">
 
         <TextView
+            android:id="@+id/card_nombre"
             android:layout_width="wrap_content"
             android:layout_height="25sp"
             android:gravity="bottom|center"
@@ -30,6 +31,7 @@
             android:text="Persona #1"/>
 
         <TextView
+            android:id="@+id/card_parentesco"
             android:layout_width="wrap_content"
             android:layout_height="25sp"
             android:gravity="top|center"

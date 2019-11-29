@@ -11,6 +11,8 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import com.itq.proyecto.besafe.database.Contacto;
 import com.itq.proyecto.besafe.database.DBHelper;
@@ -23,6 +25,8 @@ public class Settings extends AppCompatActivity {
     EditText mensaje;
     DBHelper helper;
 
+    LinearLayout personas;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -31,6 +35,7 @@ public class Settings extends AppCompatActivity {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         ubicacion = findViewById(R.id.check_ubicacion);
         mensaje = findViewById(R.id.edit_mensaje_ayuda);
+        personas = findViewById(R.id.personas);
         helper = Room.databaseBuilder(this,DBHelper.class,"BeSafe")
                 .fallbackToDestructiveMigration().allowMainThreadQueries().build();
 
@@ -51,6 +56,16 @@ public class Settings extends AppCompatActivity {
                 startActivity(new Intent(getApplicationContext(), Agregar.class));
             }
         });
+
+        List<Contacto> contactos = helper.contactoDao().getContactos();
+        for(Contacto contacto: contactos) {
+            View view = getLayoutInflater().inflate(R.layout.item_person, personas);
+            TextView nombre = view.findViewById(R.id.card_nombre);
+            TextView parentesco = view.findViewById(R.id.card_parentesco);
+            nombre.setText(contacto.getNombre());
+            parentesco.setText(contacto.getParentesco());
+            personas.addView(view);
+        }
 
 
 
