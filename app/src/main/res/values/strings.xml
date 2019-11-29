@@ -2,4 +2,5 @@
     <string name="app_name">Be Safe</string>
     <string name="sms_body">Auxilio, me desmayo \nhttp://maps.google.com?q=%f,%f</string>
     <string name="ajustes">Ajustes</string>
+    <string name="about">Be Safe &#174;\n2019</string>
 </resources>

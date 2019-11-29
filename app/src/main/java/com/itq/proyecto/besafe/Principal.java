@@ -3,6 +3,8 @@ package com.itq.proyecto.besafe;
 import android.Manifest;
 import android.app.Activity;
 import android.app.PendingIntent;
+import android.arch.persistence.room.Database;
+import android.arch.persistence.room.Room;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothServerSocket;
@@ -21,8 +23,11 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.Toast;
 
+import com.itq.proyecto.besafe.database.Contacto;
+import com.itq.proyecto.besafe.database.DBHelper;
 import com.karumi.dexter.Dexter;
 import com.karumi.dexter.MultiplePermissionsReport;
 import com.karumi.dexter.PermissionToken;
@@ -41,12 +46,14 @@ import static android.Manifest.permission.ACCESS_FINE_LOCATION;
 import static android.Manifest.permission.SEND_SMS;
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 
-public class Principal extends AppCompatActivity implements View.OnLongClickListener{
+public class Principal extends AppCompatActivity implements View.OnClickListener{
     public final String SENT = "SMS_SENT";
     public final String DELIVERED = "SMS_DELIVERED";
     Button boton;
     BluetoothAdapter adapter;
     UUID uuid = UUID.fromString("560deb50-1230-11ea-8d71-362b9e155667");
+    ImageView settings;
+    DBHelper helper;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -78,44 +85,20 @@ public class Principal extends AppCompatActivity implements View.OnLongClickList
                 .onSameThread()
                 .check();
 
+        helper = Room.databaseBuilder(this,DBHelper.class,"BeSafe")
+                .fallbackToDestructiveMigration().allowMainThreadQueries().build();
+
         initComponents();
         setComponents();
     }
 
     public void initComponents() {
         boton = findViewById(R.id.button_panic);
-        listBondedDevices();
-    }
-
-    public void listBondedDevices() {
-        adapter = BluetoothAdapter.getDefaultAdapter();
-        Set<BluetoothDevice> bt = adapter.getBondedDevices();
-        String[] devices = new String[bt.size()];
-
-        int index = 0;
-        if(bt.size() > 0) {
-            for(BluetoothDevice device : bt) {
-                Log.i("Bluettoth", device.getName() + " " + device.getAddress());
-                devices[index++] = device.getName() + " " + device.getAddress();
-            }
-        }
-
-    }
-
-    public void setConnection() {
-        ServerClass serverClass = new ServerClass();
-        serverClass.start();
-    }
-
-    public void sendData() {
-
-    }
-
-    public String getData() {
-        return "";
+        settings = findViewById(R.id.ic_settings);
     }
     public void setComponents() {
-        boton.setOnLongClickListener(this);
+        boton.setOnClickListener(this);
+        settings.setOnClickListener(this);
     }
 
     private Location getLocation() {
@@ -189,18 +172,31 @@ public class Principal extends AppCompatActivity implements View.OnLongClickList
     }
 
     @Override
-    public boolean onLongClick(View v) {
+    public void onClick(View v) {
         if (v.getId() == R.id.button_panic) {
             if (checkSelfPermission(ACCESS_FINE_LOCATION) == PERMISSION_GRANTED
                     && checkSelfPermission(SEND_SMS) == PERMISSION_GRANTED) {
                 Location location = getLocation();
-                sendSMS("+524428243038", String.format(getString(R.string.sms_body), location.getLatitude(), location.getLongitude()));
+                String mensaje = helper.mensajeDao().getMensaje().getMensaje();
+                if(helper.mensajeDao().getMensaje().getUbicacion() == 1) {
+                    mensaje += String.format(" \nhttp://maps.google.com?q=%f,%f", location.getLatitude(), location.getLongitude());
+                }
+                Log.i("Bluetooth", mensaje);
+
+
+                List<Contacto> contactos = helper.contactoDao().getContactos();
+                Log.i("contactos", contactos.toString());
+
+                for (Contacto contacto: contactos) {
+                    sendSMS(contacto.getTelefono(), mensaje);
+                }
             } else {
                 Toast.makeText(this, "Sin Permisos ):", Toast.LENGTH_SHORT).show();
             }
-            return true;
         }
-        return false;
+        else if (v.getId() == R.id.ic_settings) {
+            startActivity(new Intent(getApplicationContext(), Settings.class));
+        }
     }
 
     @Override
@@ -211,83 +207,5 @@ public class Principal extends AppCompatActivity implements View.OnLongClickList
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         return super.onOptionsItemSelected(item);
-    }
-
-
-    private class ServerClass extends Thread {
-        private BluetoothServerSocket serverSocket;
-
-        public ServerClass() {
-            try {
-                serverSocket = adapter.listenUsingInsecureRfcommWithServiceRecord("BeSafe", uuid);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
-        public void run() {
-            BluetoothSocket socket = null;
-            while (socket == null) {
-                try {
-                    socket = serverSocket.accept();
-                }
-                catch (IOException e) {
-                    e.printStackTrace();
-                }
-                if(socket != null) {
-                    break;
-                }
-            }
-        }
-    }
-
-    private class SendReceive extends Thread{
-
-        private BluetoothSocket bluetoothSocket;
-        private InputStream inputStream;
-        private OutputStream outputStream;
-
-        public SendReceive(BluetoothSocket socket)
-        {
-            bluetoothSocket=socket;
-            InputStream tempIn=null;
-            OutputStream tempOut=null;
-
-            try {
-                tempIn=bluetoothSocket.getInputStream();
-                tempOut=bluetoothSocket.getOutputStream();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            inputStream=tempIn;
-            outputStream=tempOut;
-        }
-
-        public void run()
-        {
-            byte[] buffer=new byte[1024];
-            int bytes;
-
-            while (true)
-            {
-                try {
-                    bytes=inputStream.read(buffer);
-                    Log.i("Bluetooth", bytes + "");
-                    //handler.obtainMessage(STATE_MESSAGE_RECEIVED,bytes,-1,buffer).sendToTarget();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-
-        public void write(byte[] bytes)
-        {
-            try {
-                outputStream.write(bytes);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
     }
 }
