@@ -56,19 +56,27 @@ public class Settings extends AppCompatActivity {
                 startActivity(new Intent(getApplicationContext(), Agregar.class));
             }
         });
+    }
 
+    public void setComponents() {
+        if(helper == null)
+            helper = Room.databaseBuilder(this,DBHelper.class,"BeSafe")
+                    .fallbackToDestructiveMigration().allowMainThreadQueries().build();
         List<Contacto> contactos = helper.contactoDao().getContactos();
         for(Contacto contacto: contactos) {
-            View view = getLayoutInflater().inflate(R.layout.item_person, personas);
+            View view = getLayoutInflater().inflate(R.layout.item_person, null);
             TextView nombre = view.findViewById(R.id.card_nombre);
             TextView parentesco = view.findViewById(R.id.card_parentesco);
             nombre.setText(contacto.getNombre());
             parentesco.setText(contacto.getParentesco());
             personas.addView(view);
         }
+    }
 
-
-
+    @Override
+    protected void onResume() {
+        super.onResume();
+        setComponents();
     }
 
     @Override
